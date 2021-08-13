@@ -2,14 +2,14 @@ import express from 'express';
 import cookieParser from 'cookie-parser';
 import passport from 'passport';
 import { IResponse, Req, Res, Next } from './interface';
-import { loginMiddleware, registerMiddleware } from './middlewares';
-import { loginController, registerController } from './controllers';
+import routers from './routers';
 import { ServerError } from './errors';
 import strategies from './strategies';
 
 // initialise the strategies
 strategies();
 const app = express();
+const { authRouter, userRouter, roomRouter } = routers;
 
 // middlewares
 app.use(express.json())
@@ -17,17 +17,10 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser("$ecret"));
 app.use(passport.initialize());
 
-app.post(
-  '/login',
-  loginMiddleware,
-  loginController
-);
-
-app.post(
-  '/register',
-  registerMiddleware,
-  registerController
-);
+// Link the routers to the app
+app.use(authRouter.path, authRouter.init());
+app.use(userRouter.path, userRouter.init());
+app.use(roomRouter.path, roomRouter.init());
 
 // error handler
 app.use((err: ServerError, req: Req, res: Res, next: Next) => {
