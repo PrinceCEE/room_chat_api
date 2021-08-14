@@ -18,3 +18,7 @@ export const UpdateValidator = object({
   email: string().email(),
   password: string().min(6)
 });
+
+export const CreateRoomValidator = object({
+  name: string().required()
+});

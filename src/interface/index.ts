@@ -17,6 +17,7 @@ export interface IUser extends Document {
 
 export interface IRoom extends Document {
   name: string;
+  creatorUsername: string;
   members: any[];
   [key: string]: any;
 }

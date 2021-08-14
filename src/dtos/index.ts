@@ -14,3 +14,7 @@ export class UpdateDto {
   email?: string;
   password?: string;
 }
+
+export class CreateRoomDto {
+  name!: string;
+}

@@ -3,6 +3,7 @@ import {
   validateCreateRoom,
   isAMember,
   isRoomCreator,
+  isRoomExist,
   jwtAuthenticator,
 } from '../middlewares';
 import {
@@ -10,6 +11,7 @@ import {
   createRoom,
   leaveRoom,
   deleteRoom,
+  joinRoom,
 } from '../controllers';
 
 export default class extends Router {
@@ -31,13 +33,23 @@ export default class extends Router {
     this.router.post(
       '/:roomName/leave',
       jwtAuthenticator,
+      isRoomExist,
       isAMember,
       leaveRoom,
     );
 
     this.router.post(
+      '/:roomName/join',
+      jwtAuthenticator,
+      isRoomExist,
+      isAMember,
+      joinRoom,
+    );
+
+    this.router.post(
       '/:roomName/delete',
       jwtAuthenticator,
+      isRoomExist,
       isRoomCreator,
       deleteRoom,
     );
