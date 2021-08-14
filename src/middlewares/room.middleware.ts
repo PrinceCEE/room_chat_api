@@ -1,5 +1,5 @@
 import { CreateRoomDto } from '../dtos';
-import { BadrequestError } from '../errors';
+import { BadrequestError, UnauthorisedError } from '../errors';
 import { Next, Req, Res, IUser } from '../interface';
 import roomService from '../services/room.service';
 import { CreateRoomValidator } from '../validators';
@@ -58,6 +58,6 @@ export const isRoomCreator = async (req: Req, res: Res, next: Next) => {
   if(!roomService.isCreator(roomName, user.username)) {
     return next(new UnauthorisedError("Sorry, you are not authorised to delete the room"));
   }
-  
+
   next();
 }
