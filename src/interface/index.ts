@@ -20,6 +20,12 @@ export interface IRoom extends Document {
   [key: string]: any;
 }
 
+export interface IJwtPayload {
+  sub: string;
+  username: string;
+  [key: string]: string;
+}
+
 export type Req = Request;
 export type Res = Response;
 export type Next = NextFunction;
