@@ -34,6 +34,12 @@ class UserService {
   comparePassword(pwd: string, password: string) {
     return compare(pwd, password);
   }
+
+  async getUserRooms(id: string) {
+    let user = await this.userModel.findOne({ _id: id })
+      .populate('rooms');
+    return user?.rooms.map(room => room.name);
+  }
 }
 
 // exposing a singleton userservice across all controllers and middlewares

@@ -8,3 +8,9 @@ export class LoginDto {
   username!: string;
   password!: string;
 }
+
+export class UpdateDto {
+  username?: string;
+  email?: string;
+  password?: string;
+}

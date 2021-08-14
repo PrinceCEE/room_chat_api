@@ -12,3 +12,9 @@ export const LoginValidator = object({
   username: string().required(),
   password: string().min(MINPWD).required()
 });
+
+export const UpdateValidator = object({
+  username: string(),
+  email: string().email(),
+  password: string().min(6)
+});

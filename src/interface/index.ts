@@ -11,6 +11,7 @@ export interface IUser extends Document {
   username: string;
   email: string;
   password: string;
+  rooms: any[];
   [key: string]: any;
 }
 
