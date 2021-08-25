@@ -1,5 +1,10 @@
-import { Req, Res, Next, IResponse, IUser } from "../interface";
-import { NotImplementedError } from '../errors';
+import {
+  Req,
+  Res,
+  Next,
+  IResponse,
+  IUser
+} from "../interface";
 import { RegisterDto } from "../dtos";
 import userService from "../services/user.service";
 import { getAccessToken } from '../utils';
