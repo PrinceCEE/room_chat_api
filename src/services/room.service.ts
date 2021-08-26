@@ -1,7 +1,6 @@
 import { Model } from "mongoose";
 import RoomModel from "../models/room.model";
 import { IRoom } from "../interface";
-import roomModel from "../models/room.model";
 
 class RoomService {
   constructor(private roomModel: Model<IRoom>) {}
@@ -14,8 +13,8 @@ class RoomService {
     return this.roomModel.findOne({
       name: {
         $regex: roomName,
-        $options: "i"
-      }
+        $options: "i",
+      },
     });
   }
 
@@ -41,7 +40,7 @@ class RoomService {
       return id.toString === userId;
     }) as number;
 
-    if(index !== -1) {
+    if (index !== -1) {
       room?.members.splice(index, 1);
       await room?.save();
     }
@@ -56,13 +55,13 @@ class RoomService {
   async isCreator(roomName: string, username: string) {
     return this.roomModel.findOne({
       name: new RegExp(roomName, "i"),
-      creatorUsername: new RegExp(username, "i")
+      creatorUsername: new RegExp(username, "i"),
     });
   }
 
   async deleteRoom(roomName: string) {
     return this.roomModel.findOneAndDelete({
-      name: new RegExp(roomName, "i")
+      name: new RegExp(roomName, "i"),
     });
   }
 }

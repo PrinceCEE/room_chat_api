@@ -1,4 +1,4 @@
-type ClientEventNames =
+export type ClientEventNames =
   | "authentication"
   | "joinRoom"
   | "leaveRoom"
@@ -14,7 +14,7 @@ type ServerEventNames =
   | "roomUsersOnline";
 
 // define a tuple-type for the events
-type WsEvent<T, U> = [T, U];
+export type WsEvent<T, U> = [T, U];
 
 // Data events interfaces
 interface IAuthentication {
@@ -23,13 +23,16 @@ interface IAuthentication {
 
 interface IJoinRoom {
   roomName: string;
+  username: string;
 }
 
 interface ILeaveRoom {
   roomName: string;
+  username: string;
 }
 
 interface IClientChatMessage {
+  username: string;
   roomName: string;
   message: string;
 }

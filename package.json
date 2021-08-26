@@ -32,6 +32,7 @@
     "passport": "^0.4.1",
     "passport-jwt": "^4.0.0",
     "passport-local": "^1.0.0",
+    "redis": "^3.1.2",
     "throng": "^5.0.0",
     "ws": "^8.0.0"
   },
@@ -47,6 +48,7 @@
     "@types/passport": "^1.0.7",
     "@types/passport-jwt": "^3.0.6",
     "@types/passport-local": "^1.0.34",
+    "@types/redis": "^2.8.31",
     "@types/throng": "^5.0.1",
     "@types/ws": "^7.4.7",
     "nodemon": "^2.0.12",
