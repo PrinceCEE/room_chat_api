@@ -5,12 +5,12 @@
  * Tools - NodeJs, MongoDB, Redis
  */
 
-import http from 'http';
-import throng from 'throng';
-import mongoose from 'mongoose';
-import config from 'dotenv';
-import App from './app';
-import Wss from './websocket';
+import http from "http";
+import throng from "throng";
+import mongoose from "mongoose";
+import config from "dotenv";
+import App from "./app";
+import Wss from "./websocket";
 
 config.config();
 const PORT = process.env.NODE_ENV || 3000;
@@ -28,7 +28,7 @@ async function bootstrap() {
   const server = http.createServer(App);
 
   // create websocket server
-  Wss(server); 
+  Wss(server);
 
   // bind the http server to listen on $PORT
   server.listen(PORT, () => {
@@ -41,13 +41,6 @@ function start() {
 }
 
 // spin x servers, where x is the number of cpu cores
-throng({ worker: start });
-// 0. Set up the project architecture
-// 1. Clients register
-// 2. Clients login
-// 3. Clients get authenticated to the websocket server after logging in
-// 4. Clients create chat rooms
-// 5. Clients join chat rooms
-// 6. Clients leave chat rooms
-// 7. Clients delete chat rooms
-// 8. Clients chat with each other
+throng({
+  worker: start,
+});

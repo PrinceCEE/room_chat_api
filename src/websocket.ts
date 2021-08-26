@@ -1,6 +1,6 @@
-import { Server } from 'ws';
-import { Server as HttpServer } from 'http';
-import { ORIGIN } from './constants';
+import { Server } from "ws";
+import { Server as HttpServer } from "http";
+import { ORIGIN } from "./constants";
 
 export default (httpServer: HttpServer) => {
   const Wss = new Server({ noServer: true });
@@ -8,25 +8,25 @@ export default (httpServer: HttpServer) => {
   // handle upgrade events from the server
   httpServer.on("upgrade", (req, socket, head) => {
     // check for the origin
-    const origin = req.headers.origin
-      ,   NODE_ENV = process.env.NODE_ENV;
+    const origin = req.headers.origin,
+      NODE_ENV = process.env.NODE_ENV;
 
-    if(!origin) {
+    if (!origin) {
       socket.write("HTTP/1.1 401 Unauthorized");
       socket.destroy();
       return;
     }
 
-    if(NODE_ENV === "development") {
-      if(origin !== "localhost:3000") {
+    if (NODE_ENV === "development") {
+      if (origin !== "localhost:3000") {
         socket.write("HTTP/1.1 401 Unauthorized");
         socket.destroy();
         return;
       }
     }
 
-    if(NODE_ENV === "production") {
-      if(origin !== ORIGIN) {
+    if (NODE_ENV === "production") {
+      if (origin !== ORIGIN) {
         socket.write("HTTP/1.1 401 Unauthorized");
         socket.destroy();
         return;
@@ -47,4 +47,4 @@ export default (httpServer: HttpServer) => {
     // handle close event
     ws.on("close", () => console.log("Client disconnected"));
   });
-}
+};

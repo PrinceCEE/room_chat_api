@@ -1,9 +1,8 @@
-import { Model } from 'mongoose';
-import { compare } from 'bcrypt';
-import { RegisterDto } from '../dtos';
-import { IUser } from '../interface';
-import UserModel from '../models/user.model';
-
+import { Model } from "mongoose";
+import { compare } from "bcrypt";
+import { RegisterDto } from "../dtos";
+import { IUser } from "../interface";
+import UserModel from "../models/user.model";
 
 class UserService {
   constructor(private userModel: Model<IUser>) {}
@@ -16,8 +15,8 @@ class UserService {
     return this.userModel.findOne({
       username: {
         $regex: username,
-        $options: "i"
-      }
+        $options: "i",
+      },
     });
   }
 
@@ -26,7 +25,7 @@ class UserService {
   }
 
   /**
-   * 
+   *
    * @param pwd The password submitted by the user
    * @param password The password stored in the user document
    * @returns Promise<boolean>
@@ -36,11 +35,10 @@ class UserService {
   }
 
   async getUserRooms(id: string) {
-    let user = await this.userModel.findOne({ _id: id })
-      .populate('rooms');
+    let user = await this.userModel.findOne({ _id: id }).populate("rooms");
     return user?.rooms.map(room => room.name);
   }
 }
 
 // exposing a singleton userservice across all controllers and middlewares
-export default new UserService(UserModel)
+export default new UserService(UserModel);
