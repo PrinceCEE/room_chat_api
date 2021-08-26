@@ -8,6 +8,7 @@ import {
   registerController,
   loginController
 } from '../controllers';
+import { asyncHandler } from '../utils';
 
 export default class extends Router {
   path = "/auth";
@@ -15,15 +16,15 @@ export default class extends Router {
   init() {
     this.router.post(
       '/register',
-      registerMiddleware,
-      registerController,
+      asyncHandler(registerMiddleware),
+      asyncHandler(registerController),
     );
 
     this.router.post(
       '/login',
-      loginMiddleware,
-      localAuthenticator,
-      loginController,
+      asyncHandler(loginMiddleware),
+      asyncHandler(localAuthenticator),
+      asyncHandler(loginController),
     );
 
     return this.router;
