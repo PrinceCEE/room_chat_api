@@ -17,59 +17,59 @@ type ServerEventNames =
 export type WsEvent<T, U> = [T, U];
 
 // Data events interfaces
-interface IAuthentication {
+export interface IAuthentication {
   accessToken: string;
 }
 
-interface IJoinRoom {
+export interface IJoinRoom {
   roomName: string;
   username: string;
 }
 
-interface ILeaveRoom {
+export interface ILeaveRoom {
   roomName: string;
   username: string;
 }
 
-interface IClientChatMessage {
+export interface IClientChatMessage {
   username: string;
   roomName: string;
   message: string;
 }
 
-interface INewMember {
+export interface INewMember {
   username: string;
   roomName: string;
 }
 
-interface ILeftRoom {
+export interface ILeftRoom {
   username: string;
   roomName: string;
 }
 
-interface IServerChatMessage {
+export interface IServerChatMessage {
   username: string;
   roomName: string;
   message;
   string;
 }
 
-interface IOnline {
+export interface IOnline {
   username: string;
   roomNames: string[];
 }
 
-interface IOffline {
+export interface IOffline {
   username: string;
   roomNames: string[];
 }
 
-interface IAllUsersOnline {
+export interface IAllUsersOnline {
   count: number;
   usernames: string[];
 }
 
-interface IRoomUsersOnline {
+export interface IRoomUsersOnline {
   count: number;
   usernames: string[];
 }

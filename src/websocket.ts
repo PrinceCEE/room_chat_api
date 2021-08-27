@@ -1,18 +1,81 @@
-import { Server } from "ws";
+import Websocket, { Server } from "ws";
 import { Server as HttpServer } from "http";
+import { WrappedNodeRedisClient } from "handy-redis";
 import { ORIGIN } from "./constants";
 import {
   AuthEvent,
   ClientEventNames,
+  JoinRoomEvent,
+  NewMemberEvent,
   WsEvent,
+  IJoinRoom,
+  RoomUsersOnlineEvent,
+  IRoomUsersOnline,
 } from "./interface/events.interface";
-import { RedisClient } from "redis";
+import NRP from "node-redis-pubsub";
 import CacheService from "./services/cache.service";
 import { getJwtPayloadFromToken } from "./utils";
 
-export default (httpServer: HttpServer, redisClient: RedisClient) => {
-  const Wss = new Server({ noServer: true });
-  const cacheService = new CacheService(redisClient);
+export default (
+  httpServer: HttpServer,
+  redisClient: WrappedNodeRedisClient,
+  pid: number,
+) => {
+  /**
+   * Store an internal Map of the connected clients in each cluster,
+   * using their username as the key and the `ws` as the value,
+   * then save the usernames of the connected clients to Redis
+   */
+  const connectedClientSockets = new Map<string, Websocket>();
+
+  const Wss = new Server({ noServer: true }),
+    cacheService = new CacheService(redisClient),
+    nrp = new NRP.NodeRedisPubSub({ port: 6379 });
+
+  // associate all the events to listen for
+  nrp.on("joinRoom", data => {
+    let [eventName, message, clusterId]: [string, IJoinRoom, number] =
+      JSON.parse(data);
+
+    /**
+     * making sure that the cluster that published
+     * the event isn't going to broadcast
+     **/
+    if (clusterId !== pid) {
+      Wss.clients.forEach(ws => {
+        const data = [
+          eventName,
+          {
+            username: message.username,
+            roomName: message.roomName,
+          },
+        ];
+        ws.send(data);
+      });
+    }
+  });
+
+  nrp.on("joinRoom", data => {
+    let [eventName, message, clusterId]: [string, IRoomUsersOnline, number] =
+      JSON.parse(data);
+
+    /**
+     * making sure that the cluster that published
+     * the event isn't going to broadcast
+     **/
+    if (clusterId !== pid) {
+      Wss.clients.forEach(ws => {
+        const data = [
+          eventName,
+          {
+            count: message.count,
+            usernames: message.usernames,
+          },
+        ];
+        ws.send(data);
+      });
+    }
+  });
 
   // handle upgrade events from the server
   httpServer.on("upgrade", (req, socket, head) => {
@@ -27,7 +90,7 @@ export default (httpServer: HttpServer, redisClient: RedisClient) => {
     }
 
     if (NODE_ENV === "development") {
-      if (origin !== "localhost:3000") {
+      if (origin !== "http://localhost:3000") {
         socket.write("HTTP/1.1 401 Unauthorized");
         socket.destroy();
         return;
@@ -49,23 +112,25 @@ export default (httpServer: HttpServer, redisClient: RedisClient) => {
     });
   });
 
-  Wss.on("connection", (ws, req) => {
+  Wss.on("connection", (ws, _) => {
+    let username: string;
+
     // register the socket
     ws.on("message", async (data: WsEvent<string, any>) => {
       let eventName = data[0] as ClientEventNames;
       if (eventName === "authentication") {
         const [_, message] = data as AuthEvent;
-        const { username } = getJwtPayloadFromToken(message.accessToken);
-        if (!username) {
+        const payload = getJwtPayloadFromToken(message.accessToken);
+        if (!payload.username) {
           ws.close(1, "Unauthorised");
           return;
         }
 
+        username = payload.username;
         await cacheService.saveConnectedClients(username);
+        connectedClientSockets.set(username, ws);
       } else {
-        // check if the username is stored in the ws cache
-        const { username } = data[1];
-        if (!(await cacheService.getClient(username))) {
+        if (!(await cacheService.getClient(data[1].username))) {
           ws.close(1, "Unauthorised");
           return;
         }
@@ -73,7 +138,48 @@ export default (httpServer: HttpServer, redisClient: RedisClient) => {
         // handle the various messages from the clients
         switch (eventName) {
           case "joinRoom":
-            // not implemented
+            /**
+             * To join a room, get the room name and the username of the
+             * user.
+             * Store the username in the room
+             * Broadcast to all connected clients the newMember event
+             * Broadcast the room members to connected clients
+             * Publish the joinRoom event to other clusters, so they can broadcast
+             * to connected clients the newMember event.
+             * Publish the roomUsersOnline event
+             */
+            let [_, message] = data as JoinRoomEvent;
+
+            await cacheService.addUserToRoom(
+              message.roomName,
+              message.username,
+            );
+
+            let newMemberData: NewMemberEvent = [
+                "newMember",
+                {
+                  username: message.username,
+                  roomName: message.roomName,
+                },
+              ],
+              room = await cacheService.getRoomUsersOnline(message.roomName),
+              roomArr = Object.keys(room as object),
+              roomUsersOnlineData: RoomUsersOnlineEvent = [
+                "roomUsersOnline",
+                {
+                  count: roomArr.length,
+                  usernames: roomArr,
+                },
+              ];
+
+            Wss.clients.forEach(ws => ws.send(newMemberData));
+            Wss.clients.forEach(ws => ws.send(roomUsersOnlineData));
+            nrp.emit("joinRoom", JSON.stringify([...newMemberData, pid]));
+            nrp.emit(
+              "roomUsersOnline",
+              JSON.stringify([...roomUsersOnlineData, pid]),
+            );
+
             break;
           case "chatMessage":
             // not implemented
@@ -86,6 +192,9 @@ export default (httpServer: HttpServer, redisClient: RedisClient) => {
     });
 
     // handle close event
-    ws.on("close", () => console.log("Client disconnected"));
+    ws.on("close", async () => {
+      await cacheService.removeFromConnectedClients(username);
+      connectedClientSockets.delete(username);
+    });
   });
 };
