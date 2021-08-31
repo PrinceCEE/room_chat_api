@@ -11,10 +11,15 @@ import {
   IJoinRoom,
   RoomUsersOnlineEvent,
   IRoomUsersOnline,
+  OnlineEvent,
+  OfflineEvent,
+  AllUsersOnlineEvent,
+  IAllUsersOnline,
 } from "./interface/events.interface";
 import NRP from "node-redis-pubsub";
 import CacheService from "./services/cache.service";
 import { getJwtPayloadFromToken } from "./utils";
+import userService from "./services/user.service";
 
 export default (
   httpServer: HttpServer,
@@ -77,6 +82,83 @@ export default (
     }
   });
 
+  nrp.on("online", async data => {
+    let [eventName, message, clusterId]: [
+      string,
+      { username: string },
+      number,
+    ] = JSON.parse(data);
+
+    /**
+     * making sure that the cluster that published
+     * the event isn't going to broadcast
+     */
+    if (clusterId !== pid) {
+      for await (let ws of Wss.clients) {
+        const roomNames = (await userService.getUserRooms(
+          undefined,
+          message.username,
+        )) as string[];
+
+        if (roomNames?.length > 0) {
+          const onlineData = [
+            eventName,
+            {
+              username: message.username,
+              roomNames,
+            },
+          ];
+          ws.send(onlineData);
+        }
+      }
+    }
+  });
+
+  nrp.on("offline", async data => {
+    let [eventName, message, clusterId]: [
+      string,
+      { username: string },
+      number,
+    ] = JSON.parse(data);
+
+    /**
+     * making sure that the cluster that published
+     * the event isn't going to broadcast
+     */
+    if (clusterId !== pid) {
+      for await (let ws of Wss.clients) {
+        const roomNames = (await userService.getUserRooms(
+          undefined,
+          message.username,
+        )) as string[];
+
+        if (roomNames?.length > 0) {
+          const onlineData = [
+            eventName,
+            {
+              username: message.username,
+              roomNames,
+            },
+          ];
+          ws.send(onlineData);
+        }
+      }
+    }
+  });
+
+  nrp.on("allUsersOnline", async data => {
+    let [eventName, message, clusterId]: [string, IAllUsersOnline, number] =
+      JSON.parse(data);
+
+    /**
+     * making sure that the cluster that published
+     * the event isn't going to broadcast
+     */
+    if (clusterId !== pid) {
+      Wss.clients.forEach(ws => ws.send([eventName, message]));
+    }
+  });
+
   // handle upgrade events from the server
   httpServer.on("upgrade", (req, socket, head) => {
     // check for the origin
@@ -118,6 +200,19 @@ export default (
     // register the socket
     ws.on("message", async (data: WsEvent<string, any>) => {
       let eventName = data[0] as ClientEventNames;
+
+      /**
+       * When a client comes online, the first message to be sent
+       * is the `authentication` event.
+       * If the authentication is successful, initialise
+       * the username field.
+       * Save the client's username to Redis and update the `connectedClientSockets`
+       * Send an `Online` event to the connected clients
+       * Send the `allUsersOnline` event to all connected clients
+       * Publish `Online` event to other clusters so they can send to
+       * their connected clients
+       * Publish the `allUserOnline` event to other clusters
+       */
       if (eventName === "authentication") {
         const [_, message] = data as AuthEvent;
         const payload = getJwtPayloadFromToken(message.accessToken);
@@ -129,6 +224,40 @@ export default (
         username = payload.username;
         await cacheService.saveConnectedClients(username);
         connectedClientSockets.set(username, ws);
+
+        const clientsOnline = await cacheService.getUsersOnline(),
+          clientUsernames = Object.keys(clientsOnline),
+          allUsersOnlineData: AllUsersOnlineEvent = [
+            "allUsersOnline",
+            {
+              count: clientUsernames.length,
+              usernames: clientUsernames,
+            },
+          ];
+
+        for await (let ws of Wss.clients) {
+          const roomNames = (await userService.getUserRooms(
+            undefined,
+            username,
+          )) as string[];
+
+          if (roomNames?.length > 0) {
+            const onlineData: OnlineEvent = [
+              "online",
+              {
+                username,
+                roomNames,
+              },
+            ];
+            ws.send(onlineData);
+          }
+        }
+        Wss.clients.forEach(ws => ws.send(allUsersOnlineData));
+        nrp.emit("online", JSON.stringify(["online", { username }, pid]));
+        nrp.emit(
+          "allUsersOnline",
+          JSON.stringify(["allUsersOnline", allUsersOnlineData, pid]),
+        );
       } else {
         if (!(await cacheService.getClient(data[1].username))) {
           ws.close(1, "Unauthorised");
@@ -191,10 +320,33 @@ export default (
       }
     });
 
-    // handle close event
+    /**
+     * Handle the connection close event
+     * send a close event to all connected clients
+     */
     ws.on("close", async () => {
       await cacheService.removeFromConnectedClients(username);
       connectedClientSockets.delete(username);
+
+      for await (let ws of Wss.clients) {
+        const roomNames = (await userService.getUserRooms(
+          undefined,
+          username,
+        )) as string[];
+
+        if (roomNames?.length > 0) {
+          const onlineData: OfflineEvent = [
+            "offline",
+            {
+              username,
+              roomNames,
+            },
+          ];
+          ws.send(onlineData);
+        }
+      }
+
+      nrp.emit("offline", JSON.stringify(["offline", { username }, pid]));
     });
   });
 };

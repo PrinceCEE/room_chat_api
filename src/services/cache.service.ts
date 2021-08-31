@@ -12,6 +12,10 @@ export default class {
     return this.redisClient.hdel(CONNECTED_CLIENTS, username);
   }
 
+  getUsersOnline() {
+    return this.redisClient.hgetall(CONNECTED_CLIENTS);
+  }
+
   /**
    *
    * @param roomName The roomName which serves as the key
@@ -47,7 +51,7 @@ export default class {
     return room;
   }
 
-  async getClient(username: string): Promise<string> {
-    return "";
+  async getClient(username: string) {
+    return this.redisClient.hget(CONNECTED_CLIENTS, username);
   }
 }

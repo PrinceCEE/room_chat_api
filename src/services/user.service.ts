@@ -34,8 +34,15 @@ class UserService {
     return compare(pwd, password);
   }
 
-  async getUserRooms(id: string) {
-    let user = await this.userModel.findOne({ _id: id }).populate("rooms");
+  async getUserRooms(id?: string, username?: string) {
+    let user = id
+      ? await this.userModel.findOne({ _id: id }).populate("rooms")
+      : await this.userModel.findOne({
+          username: {
+            $regex: username,
+            $options: "i",
+          },
+        });
     return user?.rooms.map(room => room.name);
   }
 }
