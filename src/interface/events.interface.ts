@@ -50,8 +50,7 @@ export interface ILeftRoom {
 export interface IServerChatMessage {
   username: string;
   roomName: string;
-  message;
-  string;
+  message: string;
 }
 
 export interface IOnline {

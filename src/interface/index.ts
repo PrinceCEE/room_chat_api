@@ -12,6 +12,7 @@ export interface IUser extends Document {
   email: string;
   password: string;
   rooms: any[];
+  messages: any[];
   [key: string]: any;
 }
 
@@ -20,6 +21,12 @@ export interface IRoom extends Document {
   creatorUsername: string;
   members: any[];
   [key: string]: any;
+}
+
+export interface IMessage extends Document {
+  content: string;
+  roomName: string;
+  sentFrom: any;
 }
 
 export interface IJwtPayload {

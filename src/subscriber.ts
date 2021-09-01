@@ -3,6 +3,8 @@ import {
   IJoinRoom,
   IRoomUsersOnline,
   IAllUsersOnline,
+  IServerChatMessage,
+  ILeftRoom,
 } from "./interface/events.interface";
 import userService from "./services/user.service";
 
@@ -110,6 +112,21 @@ export default class {
     let [eventName, message, clusterId]: [string, IAllUsersOnline, number] =
       JSON.parse(data);
 
+    if (clusterId !== this.pid) {
+      this.wss.clients.forEach(ws => ws.send([eventName, message]));
+    }
+  };
+
+  handleChatMessgae = data => {
+    let [eventName, message, clusterId]: [string, IServerChatMessage, number] =
+      data;
+    if (clusterId !== this.pid) {
+      this.wss.clients.forEach(ws => ws.send([eventName, message]));
+    }
+  };
+
+  handleLeftRoom = data => {
+    let [eventName, message, clusterId]: [string, ILeftRoom, number] = data;
     if (clusterId !== this.pid) {
       this.wss.clients.forEach(ws => ws.send([eventName, message]));
     }

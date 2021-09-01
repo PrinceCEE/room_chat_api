@@ -45,6 +45,22 @@ class UserService {
         });
     return user?.rooms.map(room => room.name);
   }
+
+  async updateUserMessages(username: string, messageId: string) {
+    this.userModel.findOneAndUpdate(
+      {
+        username: {
+          $regex: username,
+          $options: "i",
+        },
+      },
+      {
+        $push: {
+          messages: messageId,
+        },
+      },
+    );
+  }
 }
 
 // exposing a singleton userservice across all controllers and middlewares

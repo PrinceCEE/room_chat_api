@@ -5,7 +5,6 @@ import { ORIGIN } from "./constants";
 import {
   AuthEvent,
   ClientEventNames,
-  JoinRoomEvent,
   WsEvent,
   OfflineEvent,
 } from "./interface/events.interface";
@@ -21,13 +20,6 @@ export default (
   redisClient: WrappedNodeRedisClient,
   pid: number,
 ) => {
-  /**
-   * Store an internal Map of the connected clients in each cluster,
-   * using their username as the key and the `ws` as the value,
-   * then save the usernames of the connected clients to Redis
-   */
-  const connectedClientSockets = new Map<string, Websocket>();
-
   const Wss = new Server({ noServer: true }),
     cacheService = new CacheService(redisClient),
     nrp = new NRP.NodeRedisPubSub({ port: 6379 }),
@@ -42,6 +34,8 @@ export default (
   nrp.on("online", sub.handleOnline);
   nrp.on("offline", sub.handleOffline);
   nrp.on("allUsersOnline", sub.handleAllUsersOnline);
+  nrp.on("chatMessage", sub.handleChatMessgae);
+  nrp.on("leftRoom", sub.handleLeftRoom);
 
   // handle upgrade events from the server
   httpServer.on("upgrade", (req, socket, head) => {
@@ -90,7 +84,7 @@ export default (
        * is the `authentication` event.
        * If the authentication is successful, initialise
        * the username field.
-       * Save the client's username to Redis and update the `connectedClientSockets`
+       * Save the client's username to Redis
        */
       if (eventName === "authentication") {
         const [_, message] = data as AuthEvent;
@@ -101,7 +95,6 @@ export default (
         }
 
         username = payload.username;
-        connectedClientSockets.set(username, ws);
         messageHandler.handleAuthentication(username);
       } else {
         if (!(await cacheService.getClient(data[1].username))) {
@@ -109,17 +102,17 @@ export default (
           return;
         }
 
+        let [_, message] = data;
         // handle the various messages from the clients
         switch (eventName) {
           case "joinRoom":
-            let [_, message] = data as JoinRoomEvent;
             messageHandler.handleJoinRoom(message);
             break;
           case "chatMessage":
-            // not implemented
+            messageHandler.handleChatMessage(message, ws);
             break;
           case "leaveRoom":
-            // not implemented
+            messageHandler.handleLeaveRoom(message, ws);
             break;
         }
       }
@@ -131,7 +124,6 @@ export default (
      */
     ws.on("close", async () => {
       await cacheService.removeFromConnectedClients(username);
-      connectedClientSockets.delete(username);
 
       for await (let ws of Wss.clients) {
         const roomNames = (await userService.getUserRooms(

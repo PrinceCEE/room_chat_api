@@ -1,4 +1,4 @@
-import { Server } from "ws";
+import Websocket, { Server } from "ws";
 import NRP from "node-redis-pubsub";
 import {
   IJoinRoom,
@@ -6,9 +6,14 @@ import {
   RoomUsersOnlineEvent,
   OnlineEvent,
 } from "./interface";
-import { AllUsersOnlineEvent } from "./interface/events.interface";
+import {
+  AllUsersOnlineEvent,
+  IClientChatMessage,
+  ILeaveRoom,
+} from "./interface/events.interface";
 import cacheService from "./services/cache.service";
 import userService from "./services/user.service";
+import messageService from "./services/message.service";
 
 export default class {
   constructor(
@@ -100,6 +105,44 @@ export default class {
     );
   };
 
-  handleChatMessage = async () => {};
-  handleLeaveRoom = async () => {};
+  /**
+   * Broadcast the message to other connected clients
+   * but not the client that sent the message
+   * Publish the message to other clusters to broadcast
+   * Save the message to the database
+   */
+  handleChatMessage = async (
+    message: IClientChatMessage,
+    client: Websocket,
+  ) => {
+    this.wss.clients.forEach(ws => {
+      ws !== client && ws.send(["chatMessage", message]);
+    });
+
+    this.nrp.emit(
+      "chatMessage",
+      JSON.stringify(["chatMessage", message, this.pid]),
+    );
+
+    const newMsg = await messageService.createNewMessage(message);
+    await userService.updateUserMessages(message.username, newMsg.id);
+  };
+
+  /**
+   * Remove the user from the redis db
+   * broadcast to the connected clients
+   * publish to the other clusters
+   */
+  handleLeaveRoom = async (message: ILeaveRoom, client: Websocket) => {
+    await this.cacheService.removeUserFromRoom(
+      message.roomName,
+      message.roomName,
+    );
+
+    this.wss.clients.forEach(ws => {
+      ws !== client && ws.send(["leftRoom", message]);
+    });
+
+    this.nrp.emit("leftRoom", JSON.stringify(["leftRoom", message, this.pid]));
+  };
 }
